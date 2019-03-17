@@ -1,8 +1,9 @@
+""" Simulation of a 3-phase brushless DC motor.
+"""
 
-import math
-from scipy.integrate import odeint
 import numpy as np
-import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+import math
 
 
 class BldcMotor:
@@ -40,6 +41,15 @@ class BldcMotor:
         self.v_a = v_a
         self.v_b = v_b
         self.v_c = v_c
+
+    def proceed(self, dt):
+        """ Proceed simulation for a given timedelta. """
+        y0 = self.get_state()
+        t = np.array([0, dt])
+        sol = odeint(self.odefunc, y0, t)
+        y_end = sol[-1,:]
+        self.set_state(y_end)
+        self.bldc()  # recalculate variables based on state
 
     @staticmethod
     def F(angle):
@@ -95,43 +105,3 @@ class BldcMotor:
         self.set_state(y)
         return self.bldc()
 
-
-class BldcControlStrategy1:
-    """ Simple forced sine wave.
-
-    This is a stateless control.
-    """
-    def do_control(self, t):
-        # Generate a sine wave:
-        control_freq = 2
-        control_phase = 2 * math.pi * control_freq * t
-        v_a = 15*math.sin(control_phase)
-        v_b = 15*math.sin(control_phase - 2*math.pi/3)
-        v_c = 15*math.sin(control_phase - 4*math.pi/3)
-        return v_a, v_b, v_c
-
-
-def main():
-    strategy1()
-
-
-def strategy1():
-    """ Try-out control strategy 1. """
-    motor = BldcMotor()
-    control = BldcControlStrategy1()
-    t = np.linspace(0, 10, 10000)
-    y0 = motor.get_state()
-    def f(y, t):
-        motor.set_state(y)
-        voltages = control.do_control(t)
-        motor.set_voltages(*voltages)
-        return motor.bldc()
-
-    sol = odeint(f, y0, t)
-
-    plt.plot(t, sol)
-    plt.grid()
-    plt.show()
-
-
-main()
